@@ -1,149 +1,154 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
-import type { ModuleSummary, LessonWithProgress } from "@/lib/types";
-import { ModuleCard } from "@/components/modules/ModuleCard";
+import type { LessonWithProgress } from "@/lib/types";
 import { LessonCard } from "@/components/lessons/LessonCard";
 
-export default function HomePage() {
-  const [modules, setModules] = useState<ModuleSummary[]>([]);
+type Module = {
+  name: string;
+  slug: string;
+};
+
+export default function ModulePage() {
+  const params = useParams<{ moduleSlug: string }>();
+  const moduleSlug = params.moduleSlug;
+
+  const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<LessonWithProgress[]>([]);
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let ignore = false;
     async function load() {
-      setLoading(true);
-      setError(null);
       try {
         if (!isSupabaseConfigured) {
-          if (!ignore) {
-            setError("Supabase is not configured.");
-            setLoading(false);
-          }
+          setError("Supabase is not configured.");
+          setLoading(false);
           return;
         }
 
         const supabase = getSupabaseClient();
 
-        const { data: userData, error: userErr } = await supabase.auth.getUser();
-        if (userErr) throw userErr;
-
-        const user = userData?.user;
-        if (!user) {
-          if (!ignore) {
-            setError("Please sign in to view your modules.");
-            setLoading(false);
-          }
+        const { data: moduleData, error: moduleError } = await supabase
+          .from("modules")
+          .select("name,slug")
+          .eq("slug", moduleSlug)
+          .maybeSingle();
+        if (moduleError) throw moduleError;
+        if (!moduleData) {
+          setError("Module not found.");
+          setLoading(false);
           return;
         }
 
-        const { data: modData, error: modErr } = await supabase
-          .from("modules")
-          .select("id,name,slug,weeks_count,lessons_count")
-          .order("name", { ascending: true });
-        if (modErr) throw modErr;
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from("lessons")
+          .select("id,title,module,module_slug,week as week_number,tags,duration_seconds,created_at")
+          .eq("module_slug", moduleSlug)
+          .order("week", { ascending: true })
+          .order("title", { ascending: true });
+        if (lessonsError) throw lessonsError;
 
-        const { data: lessonData, error: lessonErr } = await supabase
-          .from("lessons_with_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (lessonErr) throw lessonErr;
-
-        if (!ignore) {
-          setModules((modData as ModuleSummary[]) ?? []);
-          setLessons((lessonData as LessonWithProgress[]) ?? []);
-        }
+        setModule(moduleData as Module);
+        setLessons((lessonsData ?? []) as LessonWithProgress[]);
+        setLoading(false);
       } catch (err: unknown) {
-        if (!ignore) setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        if (!ignore) setLoading(false);
+        const message = err instanceof Error ? err.message : "Failed to load";
+        setError(message);
+        setLoading(false);
       }
     }
+
     load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  }, [moduleSlug]);
 
-  const filteredLessons = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return lessons.filter((l) => {
-      const hay = `${l.title} ${l.module_name ?? ""} week ${l.week_number ?? ""} ${(l.tags ?? []).join(" ")}`.toLowerCase();
-      return hay.includes(q);
+  const lessonsByWeek = useMemo(() => {
+    const grouped = new Map<number, LessonWithProgress[]>();
+    lessons.forEach((lesson) => {
+      const weekNumber = lesson.week_number ?? (lesson as { week?: number }).week;
+      if (weekNumber === undefined || weekNumber === null) return;
+      const current = grouped.get(weekNumber) ?? [];
+      current.push(lesson);
+      grouped.set(weekNumber, current);
     });
-  }, [query, lessons]);
+    return grouped;
+  }, [lessons]);
 
-  if (loading) return <p className="text-sm text-neutral-600">Loading...</p>;
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  const sortedWeekNumbers = useMemo(
+    () => Array.from(lessonsByWeek.keys()).sort((a, b) => a - b),
+    [lessonsByWeek],
+  );
+
+  if (loading) return <p className="text-sm text-neutral-300">Loading...</p>;
+  if (error) return <p className="text-sm text-red-400">{error}</p>;
 
   return (
-    <div className="space-y-10">
-      <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Your library</h1>
-            <p className="mt-1 text-sm text-neutral-600">
-              Search by title, module, week, or tags. Keep it private, keep it simple.
-            </p>
-          </div>
+    <div className="space-y-8">
+      <div className="space-y-1">
+        <p className="text-sm text-neutral-500">Module</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">
+          {module?.name ?? moduleSlug}
+        </h1>
+      </div>
 
-          <div className="w-full md:max-w-sm">
-            <label className="sr-only" htmlFor="search">
-              Search lessons
-            </label>
-            <input
-              id="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search lessons..."
-              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-900 shadow-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-200"
-            />
-          </div>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Weeks</h2>
+          <p className="text-sm text-neutral-600">
+            {sortedWeekNumbers.length} week{sortedWeekNumbers.length === 1 ? "" : "s"}
+          </p>
         </div>
 
-        {query.trim() ? (
-          <div className="mt-5 space-y-3">
-            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Results ({filteredLessons.length})
-            </div>
-            {filteredLessons.length === 0 ? (
-              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
-                No matches. Try a shorter search.
-              </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {filteredLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} />
-                ))}
-              </div>
-            )}
+        {sortedWeekNumbers.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {sortedWeekNumbers.map((weekNumber) => {
+              const weekLessons = lessonsByWeek.get(weekNumber) ?? [];
+              return (
+                <Link
+                  key={weekNumber}
+                  href={`/module/${moduleSlug}/week/${weekNumber}`}
+                  className="block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className="text-sm text-neutral-500">Week</div>
+                  <div className="mt-1 text-xl font-semibold text-neutral-900">Week {weekNumber}</div>
+                  <div className="mt-2 text-sm text-neutral-600">
+                    {weekLessons.length} lesson{weekLessons.length === 1 ? "" : "s"}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : null}
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Modules</h2>
-          <p className="text-sm text-neutral-600">{modules.length} total</p>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Lessons</h2>
+          <p className="text-sm text-neutral-600">
+            {lessons.length} lesson{lessons.length === 1 ? "" : "s"}
+          </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((m) => (
-            <ModuleCard
-              key={m.id}
-              module={m.name}
-              moduleSlug={m.slug}
-              weeks={m.weeks_count}
-              lessons={m.lessons_count}
-            />
-          ))}
-        </div>
+        {lessons.length ? (
+          <div className="grid gap-3">
+            {lessons.map((lesson) => (
+              <LessonCard key={lesson.id} lesson={lesson} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+            <div>No lessons found for this module.</div>
+            <Link
+              href="/admin"
+              className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-900 shadow-sm hover:bg-neutral-50"
+            >
+              Go to admin
+            </Link>
+          </div>
+        )}
       </section>
     </div>
   );
