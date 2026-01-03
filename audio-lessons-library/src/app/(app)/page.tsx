@@ -56,8 +56,9 @@ export default function HomePage() {
         }
 
         setLoading(false);
-      } catch (e: any) {
-        setError(e?.message || "Failed to load");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to load";
+        setError(message);
         setLoading(false);
       }
     }

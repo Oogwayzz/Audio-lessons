@@ -36,8 +36,9 @@ export default function WeekPage() {
         setLessons(arr);
         if (arr[0]?.module) setModuleName(arr[0].module);
         setLoading(false);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to load";
+        setError(message);
         setLoading(false);
       }
     }

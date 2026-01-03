@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import type { ModuleSummary, LessonWithProgress } from "@/lib/types";
 import { ModuleCard } from "@/components/modules/ModuleCard";
 import { LessonCard } from "@/components/lessons/LessonCard";
@@ -19,12 +19,27 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       try {
-        const {
-          data: { user },
-          error: userErr,
-        } = await supabase.auth.getUser();
+        if (!isSupabaseConfigured) {
+          if (!ignore) {
+            setError("Supabase is not configured.");
+            setLoading(false);
+          }
+          return;
+        }
+
+        const supabase = getSupabaseClient();
+
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
         if (userErr) throw userErr;
-        if (!user) throw new Error("Not signed in");
+
+        const user = userData?.user;
+        if (!user) {
+          if (!ignore) {
+            setError("Please sign in to view your modules.");
+            setLoading(false);
+          }
+          return;
+        }
 
         const { data: modData, error: modErr } = await supabase
           .from("modules")
@@ -43,8 +58,8 @@ export default function HomePage() {
           setModules((modData as ModuleSummary[]) ?? []);
           setLessons((lessonData as LessonWithProgress[]) ?? []);
         }
-      } catch (e: any) {
-        if (!ignore) setError(e?.message ?? "Failed to load");
+      } catch (err: unknown) {
+        if (!ignore) setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
         if (!ignore) setLoading(false);
       }
