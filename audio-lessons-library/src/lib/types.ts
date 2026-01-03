@@ -17,3 +17,23 @@ export type UserProgress = {
   completed: boolean;
   updated_at: string;
 };
+
+export type ModuleSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  weeks_count: number;
+  lessons_count: number;
+};
+
+export type LessonWithProgress = {
+  id: string;
+  module_name: string | null;
+  module_slug: string;
+  week_number: number;
+  title: string;
+  audio_path: string;
+  tags?: string[] | null;
+  duration_seconds: number | null;
+  resume_seconds: number | null;
+};

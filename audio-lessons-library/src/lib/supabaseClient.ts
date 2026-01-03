@@ -7,6 +7,17 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 
 let _client: SupabaseClient | null = null;
 
+// Named export for places that prefer a shared client instance. Will be null when Supabase
+// is not configured so callers must guard accordingly.
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? (() => {
+      if (!_client) {
+        _client = createClient(url as string, anonKey as string);
+      }
+      return _client;
+    })()
+  : null;
+
 export function getSupabaseClient(): SupabaseClient {
   if (!isSupabaseConfigured) {
     throw new Error(
