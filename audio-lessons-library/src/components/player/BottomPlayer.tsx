@@ -10,18 +10,14 @@ function formatTime(seconds: number) {
 }
 
 export function BottomPlayer() {
-  const player = usePlayer();
-const state = player?.state;
+  const { lesson, isPlaying, currentTime, duration, playbackRate, toggle, seek, skip, setRate } =
+    usePlayer();
 
-if (!state?.lesson) return null;
+  if (!lesson) return null;
 
-const { toggle, seek, skip, setRate } = player;
-
-  const currentTime = state.currentTime ?? 0;
-  const duration = state.duration ?? 0;
   const progress = duration > 0 ? currentTime / duration : 0;
-  const playbackRate = state.playbackRate ?? 1;
-  const isPlaying = state.isPlaying ?? false;
+  const moduleName = (lesson as { module_name?: string }).module_name ?? lesson.module;
+  const weekNumber = (lesson as { week_number?: number }).week_number ?? lesson.week;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white/90 backdrop-blur">
@@ -29,10 +25,10 @@ const { toggle, seek, skip, setRate } = player;
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-neutral-900">
-              {state.lesson.title}
+              {lesson.title}
             </div>
             <div className="truncate text-xs text-neutral-600">
-              {state.lesson.module_name} · Week {state.lesson.week_number}
+              {moduleName} · Week {weekNumber}
             </div>
           </div>
 

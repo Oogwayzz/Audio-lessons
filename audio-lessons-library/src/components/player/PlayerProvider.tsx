@@ -12,6 +12,7 @@ type PlayerState = {
   duration: number;
   playbackRate: number;
   play: (lesson: Lesson, opts?: { startAt?: number }) => Promise<void>;
+  playLesson: (lessonId: string) => Promise<void>;
   toggle: () => void;
   seek: (timeSeconds: number) => void;
   skip: (deltaSeconds: number) => void;
@@ -129,6 +130,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     else a.pause();
   }, [lesson]);
 
+  const playLesson = useCallback(
+    async (lessonId: string) => {
+      if (!isSupabaseConfigured) return;
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from("lessons").select("*").eq("id", lessonId).single();
+      if (error || !data) return;
+
+      await play(data as Lesson);
+    },
+    [play]
+  );
+
   const seek = useCallback((timeSeconds: number) => {
     const a = audioRef.current;
     if (!a) return;
@@ -192,12 +205,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       duration,
       playbackRate,
       play,
+      playLesson,
       toggle,
       seek,
       skip,
       setRate,
     }),
-    [lesson, isPlaying, currentTime, duration, playbackRate, play, toggle, seek, skip, setRate]
+    [lesson, isPlaying, currentTime, duration, playbackRate, play, playLesson, toggle, seek, skip, setRate]
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

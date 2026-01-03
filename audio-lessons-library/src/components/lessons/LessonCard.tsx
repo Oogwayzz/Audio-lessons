@@ -11,11 +11,14 @@ function fmtTime(seconds?: number | null) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
+export function LessonCard({ lesson, resumeAt: resumeAtProp }: { lesson: LessonWithProgress; resumeAt?: number }) {
   const { playLesson } = usePlayer();
 
   const duration = lesson.duration_seconds ?? null;
-  const resumeAt = lesson.resume_seconds ?? 0;
+  const resumeAt = resumeAtProp ?? lesson.resume_seconds ?? 0;
+  const moduleName = lesson.module_name ?? lesson.module ?? "Module";
+  const weekNumber = lesson.week_number ?? lesson.week ?? null;
+  const tags = lesson.tags ?? [];
   const pct =
     duration && duration > 0 ? Math.min(1, Math.max(0, resumeAt / duration)) : 0;
 
@@ -31,9 +34,13 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
           </Link>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-600">
-            <span className="truncate">{lesson.module_name}</span>
-            <span className="text-neutral-300">•</span>
-            <span>Week {lesson.week_number}</span>
+            <span className="truncate">{moduleName}</span>
+            {weekNumber !== null ? (
+              <>
+                <span className="text-neutral-300">•</span>
+                <span>Week {weekNumber}</span>
+              </>
+            ) : null}
             {duration ? (
               <>
                 <span className="text-neutral-300">•</span>
@@ -44,7 +51,7 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
 
           {lesson.tags?.length ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {lesson.tags.slice(0, 4).map((t) => (
+              {tags.slice(0, 4).map((t) => (
                 <span
                   key={t}
                   className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs text-neutral-700"
@@ -52,9 +59,9 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
                   {t}
                 </span>
               ))}
-              {lesson.tags.length > 4 ? (
+              {tags.length > 4 ? (
                 <span className="text-xs text-neutral-500">
-                  +{lesson.tags.length - 4}
+                  +{tags.length - 4}
                 </span>
               ) : null}
             </div>
@@ -87,4 +94,3 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
     </div>
   );
 }
-
