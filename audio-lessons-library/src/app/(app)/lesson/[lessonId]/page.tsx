@@ -94,7 +94,7 @@ export default function LessonPage() {
         <button
           type="button"
           className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-neutral-200"
-          onClick={() => play(lesson, 0)}
+          onClick={() => play(lesson, { startAt: 0 })}
         >
           Play from start
         </button>
@@ -103,7 +103,7 @@ export default function LessonPage() {
           <button
             type="button"
             className="rounded-lg border border-neutral-800 px-4 py-2 text-sm hover:bg-neutral-900"
-            onClick={() => play(lesson, resumeAt)}
+            onClick={() => play(lesson, { startAt: resumeAt })}
           >
             Resume from {Math.floor(resumeAt / 60)}:{String(resumeAt % 60).padStart(2, "0")}
           </button>
