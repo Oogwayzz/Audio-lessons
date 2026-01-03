@@ -1,7 +1,7 @@
 "use client";
 
 import { usePlayer } from "@/components/player/PlayerProvider";
-import type { LessonWithProgress } from "@/lib/types";
+import type { Lesson, LessonWithProgress } from "@/lib/types";
 import Link from "next/link";
 
 function fmtTime(seconds?: number | null) {
@@ -11,11 +11,25 @@ function fmtTime(seconds?: number | null) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
-  const { playLesson } = usePlayer();
+export function LessonCard({
+  lesson,
+  resumeAt: resumeAtOverride,
+}: {
+  lesson: LessonWithProgress | Lesson;
+  resumeAt?: number;
+}) {
+  const { play } = usePlayer();
 
-  const duration = lesson.duration_seconds ?? null;
-  const resumeAt = lesson.resume_seconds ?? 0;
+  const moduleName = "module_name" in lesson ? lesson.module_name : lesson.module;
+  const weekNumber = "week_number" in lesson ? lesson.week_number : lesson.week;
+  const duration = "duration_seconds" in lesson ? lesson.duration_seconds ?? null : null;
+  const resumeAt =
+    typeof resumeAtOverride === "number"
+      ? resumeAtOverride
+      : "resume_seconds" in lesson
+        ? lesson.resume_seconds ?? 0
+        : 0;
+  const tags = lesson.tags ?? [];
   const pct =
     duration && duration > 0 ? Math.min(1, Math.max(0, resumeAt / duration)) : 0;
 
@@ -31,9 +45,9 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
           </Link>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-600">
-            <span className="truncate">{lesson.module_name}</span>
+            <span className="truncate">{moduleName}</span>
             <span className="text-neutral-300">•</span>
-            <span>Week {lesson.week_number}</span>
+            <span>Week {weekNumber}</span>
             {duration ? (
               <>
                 <span className="text-neutral-300">•</span>
@@ -42,9 +56,9 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
             ) : null}
           </div>
 
-          {lesson.tags?.length ? (
+          {tags?.length ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {lesson.tags.slice(0, 4).map((t) => (
+              {tags.slice(0, 4).map((t) => (
                 <span
                   key={t}
                   className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs text-neutral-700"
@@ -52,10 +66,8 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
                   {t}
                 </span>
               ))}
-              {lesson.tags.length > 4 ? (
-                <span className="text-xs text-neutral-500">
-                  +{lesson.tags.length - 4}
-                </span>
+              {tags.length > 4 ? (
+                <span className="text-xs text-neutral-500">+{tags.length - 4}</span>
               ) : null}
             </div>
           ) : null}
@@ -63,7 +75,7 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
 
         <button
           type="button"
-          onClick={() => playLesson(lesson.id)}
+          onClick={() => play(lesson, { startAt: resumeAt })}
           className="shrink-0 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm hover:bg-neutral-50"
         >
           Play
@@ -87,4 +99,3 @@ export function LessonCard({ lesson }: { lesson: LessonWithProgress }) {
     </div>
   );
 }
-

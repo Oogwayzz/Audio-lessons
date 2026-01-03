@@ -10,18 +10,17 @@ function formatTime(seconds: number) {
 }
 
 export function BottomPlayer() {
-  const player = usePlayer();
-const state = player?.state;
+  const { lesson, toggle, seek, skip, setRate, currentTime, duration, playbackRate, isPlaying } =
+    usePlayer();
 
-if (!state?.lesson) return null;
+  if (!lesson) return null;
 
-const { toggle, seek, skip, setRate } = player;
-
-  const currentTime = state.currentTime ?? 0;
-  const duration = state.duration ?? 0;
-  const progress = duration > 0 ? currentTime / duration : 0;
-  const playbackRate = state.playbackRate ?? 1;
-  const isPlaying = state.isPlaying ?? false;
+  const moduleName = "module_name" in lesson ? lesson.module_name : lesson.module;
+  const weekNumber = "week_number" in lesson ? lesson.week_number : lesson.week;
+  const safeDuration = duration ?? 0;
+  const safeCurrent = currentTime ?? 0;
+  const progress = safeDuration > 0 ? safeCurrent / safeDuration : 0;
+  const rate = playbackRate ?? 1;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white/90 backdrop-blur">
@@ -29,10 +28,10 @@ const { toggle, seek, skip, setRate } = player;
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-neutral-900">
-              {state.lesson.title}
+              {lesson.title}
             </div>
             <div className="truncate text-xs text-neutral-600">
-              {state.lesson.module_name} · Week {state.lesson.week_number}
+              {moduleName} · Week {weekNumber}
             </div>
           </div>
 
@@ -62,7 +61,7 @@ const { toggle, seek, skip, setRate } = player;
 
           <select
             className="rounded-xl border border-neutral-200 bg-white px-2 py-2 text-sm text-neutral-900 shadow-sm"
-            value={playbackRate}
+            value={rate}
             onChange={(e) => setRate(Number(e.target.value))}
           >
             {[0.75, 1, 1.25, 1.5, 2].map((r) => (

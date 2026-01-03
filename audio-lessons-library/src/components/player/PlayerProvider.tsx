@@ -2,16 +2,18 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
-import type { Lesson } from "@/lib/types";
+import type { Lesson, LessonWithProgress } from "@/lib/types";
 import { useAuth } from "@/components/auth/AuthProvider";
 
+type PlayerLesson = Lesson | LessonWithProgress;
+
 type PlayerState = {
-  lesson: Lesson | null;
+  lesson: PlayerLesson | null;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
   playbackRate: number;
-  play: (lesson: Lesson, opts?: { startAt?: number }) => Promise<void>;
+  play: (lesson: PlayerLesson, opts?: { startAt?: number }) => Promise<void>;
   toggle: () => void;
   seek: (timeSeconds: number) => void;
   skip: (deltaSeconds: number) => void;
@@ -23,7 +25,7 @@ const PlayerContext = createContext<PlayerState | null>(null);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [lesson, setLesson] = useState<PlayerLesson | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -89,7 +91,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const play = useCallback(
-    async (nextLesson: Lesson, opts?: { startAt?: number }) => {
+    async (nextLesson: PlayerLesson, opts?: { startAt?: number }) => {
       if (!audioRef.current) return;
       if (!isSupabaseConfigured) return;
 
