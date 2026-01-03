@@ -14,15 +14,12 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(!isSupabaseConfigured);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setIsReady(true);
-      return;
-    }
+    if (!isSupabaseConfigured) return;
 
     const supabase = getSupabaseClient();
 

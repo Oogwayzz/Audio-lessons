@@ -44,8 +44,9 @@ export default function LessonPage() {
         if (progData) setProgress(progData as UserProgress);
 
         setLoading(false);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to load";
+        setError(message);
         setLoading(false);
       }
     }
